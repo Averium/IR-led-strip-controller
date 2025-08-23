@@ -3,6 +3,7 @@ idf_component_register(
         "source/main.c"
         "source/NEC_parser.c"
         "source/LED_control.c"
+        "source/rate_limited_float.c"
     INCLUDE_DIRS
         "./include"
 )

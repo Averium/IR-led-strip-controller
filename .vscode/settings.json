@@ -1,0 +1,12 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPathWin": "d:\\Programming\\Embedded\\ESP32\\IDE\\v5.3.1\\esp-idf",
+  "idf.pythonInstallPath": "d:\\Programming\\Embedded\\ESP32\\Tools\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.openOcdConfigs": [
+    "board/esp32c3-builtin.cfg"
+  ],
+  "idf.toolsPathWin": "d:\\Programming\\Embedded\\ESP32\\Tools",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c3"
+  }
+}

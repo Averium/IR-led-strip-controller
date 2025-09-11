@@ -8,5 +8,8 @@
   "idf.toolsPathWin": "d:\\Programming\\Embedded\\ESP32\\Tools",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32c3"
+  },
+  "files.associations": {
+    "nec_decoder.h": "c"
   }
 }

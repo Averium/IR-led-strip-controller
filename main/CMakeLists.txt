@@ -1,9 +1,10 @@
 idf_component_register(
     SRCS
         "source/main.c"
-        "source/NEC_parser.c"
+        "source/NEC_decoder.c"
         "source/LED_control.c"
         "source/rate_limited_float.c"
+        "source/LED_state_machine.c"
     INCLUDE_DIRS
         "./include"
 )

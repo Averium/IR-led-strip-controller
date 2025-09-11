@@ -16,6 +16,9 @@
 #define FUZZY_MIN 0.0f
 #define FUZZY_MAX 1.0f
 
+#define US_TO_S 0.000001f
+#define MS_TO_S 0.001f
+
 #define loop while(true)
 /* DO NOT MODIFY ------ */
 
@@ -32,5 +35,10 @@
 #define BRIGHTNESS_MIN 0.25f
 #define BRIGHTNESS_EXPONENT 2.2f
 #define TEMPERATURE_STEP 0.05f
+
+#define CONTROL_REFRESH_PERIOD_MS 20 // 50 Hz update
+
+#define IR_TASK_STACK_DEPTH 1024 // in words (1 word = 4 byte on 32 bit ESP)
+#define LED_TASK_STACK_DEPTH 512 // in words
 
 #endif /* CONFIG_H */

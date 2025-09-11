@@ -1,7 +1,7 @@
-#include "NEC_parser.h"
+#include "NEC_decoder.h"
 
 
-bool parse_nec_frame(
+bool NEC_decode_frame(
     const rmt_symbol_word_t *symbols,
     const size_t num_symbols,
     uint32_t *out_address,

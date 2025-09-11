@@ -1,10 +1,11 @@
-#ifndef NEC_PARSER_H
-#define NEC_PARSER_H
+#ifndef NEC_DECODER_H
+#define NEC_DECODER_H
 
 
 #include "driver/rmt_types.h"
 #include <stdbool.h>
 #include <stdint.h>
+
 
 #define NEC_HEADER_HIGH_US   9000
 #define NEC_HEADER_LOW_US    4500
@@ -25,7 +26,7 @@ static inline bool within(uint32_t value, uint32_t target, const float tolerance
 }
 
 
-bool parse_nec_frame(
+bool NEC_decode_frame(
     const rmt_symbol_word_t *symbols,
     const size_t num_symbols,
     uint32_t *out_address,
@@ -33,4 +34,4 @@ bool parse_nec_frame(
 );
 
 
-#endif /* NEC_PARSER_H */
+#endif /* NEC_DECODER_H */

@@ -10,7 +10,7 @@ typedef struct {
 
 
 RateLimitedFloat RLF_init(const float initial_value, const float rate);
-void RLF_update(RateLimitedFloat* object, const float dt);
+int RLF_update(RateLimitedFloat* object, const float dt);
 void RLF_set_target(RateLimitedFloat* object, const float new_target);
 
 

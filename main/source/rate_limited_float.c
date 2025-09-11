@@ -6,7 +6,12 @@ RateLimitedFloat RLF_init(const float initial_value, const float rate) {
 }
 
 
-void RLF_update(RateLimitedFloat* object, const float dt) {
+int RLF_update(RateLimitedFloat* object, const float dt) {
+
+    if (object->value == object->target) {
+        return 0;
+    }
+
     const float difference = object->target - object->value;
     const float step_limit = object->rate * dt;
     
@@ -20,6 +25,7 @@ void RLF_update(RateLimitedFloat* object, const float dt) {
     }
 
     object->value += step;
+    return 1;
 }
 
 

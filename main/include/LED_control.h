@@ -21,7 +21,6 @@ typedef enum {
 
 typedef struct {
     /* Data structure to store LED strip state */
-    bool enabled;
     float brightness;
     float temperature;
     LEDState state;
@@ -30,14 +29,14 @@ typedef struct {
 
 typedef struct {
     /* Return structure for LED_calculate_duty_cycles function */
-    float cool;
-    float warm;
+    float white;
+    float yellow;
 } DutyCycles;
 
 
 void LED_set_duty_cycle(const ledc_channel_t channel, const uint32_t duty_cycle);
-void LED_state_operation(const IRCommand command, LEDData* state);
-void LED_state_transition(const IRCommand command, LEDData* data);
+void LED_state_operation(const uint32_t command, LEDData* state);
+void LED_state_transition(const uint32_t command, LEDData* data);
 DutyCycles LED_calculate_duty_cycles(const LEDData* state);
 
 

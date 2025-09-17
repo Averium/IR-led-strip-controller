@@ -22,7 +22,7 @@ void LED_set_duty_cycle(
 }
 
 
-void LED_state_transition(const IRCommand command, LEDData* data) {
+void LED_state_transition(const uint32_t command, LEDData* data) {
 
     switch (data->state) {
 
@@ -40,21 +40,32 @@ void LED_state_transition(const IRCommand command, LEDData* data) {
 
         case POWER:
             if      (command == CMD_OFF)    { data->state = IDLE;      }
+            else if (command == CMD_DIMM_P) { break;                   }
+            else if (command == CMD_DIMM_N) {
+                data->brightness = FUZZY_MAX;
+                data->state = OPERATION;
+            }
+            else                            { data->state = OPERATION; }
             break;
 
         case NIGHT:
             if      (command == CMD_OFF)    { data->state = IDLE;      }
-            else if (command == CMD_NIGHT)  { data->state = IDLE;      }
-            else if (command == CMD_DIMM_N || command == CMD_DIMM_P) {
+            else if (command == CMD_DIMM_P) {
                 data->brightness = BRIGHTNESS_MIN;
                 data->state = OPERATION;
             }
+            else if (command == CMD_NIGHT)  { break;                   }
+            else if (command == CMD_DIMM_N) { break;                   }
             else                            { data->state = OPERATION; }
+            break;
+
+        default:
+            data->state = IDLE;
     }
 } 
 
 
-void LED_state_operation(const IRCommand command, LEDData* data) {
+void LED_state_operation(const uint32_t command, LEDData* data) {
 
     if (data->state != OPERATION) { return; }
 
@@ -67,45 +78,56 @@ void LED_state_operation(const IRCommand command, LEDData* data) {
             data->brightness = fuzzy_decrement(data->brightness, BRIGHTNESS_STEP);
             if (data->brightness < BRIGHTNESS_MIN) { data->brightness = BRIGHTNESS_MIN; }
             break;
-        case CMD_TEMP_P: // Increase color temperature
+        case CMD_TEMP_N: // Increase color temperature
             data->temperature = fuzzy_increment(data->temperature, TEMPERATURE_STEP);
             break;
-        case CMD_TEMP_N: // Decrease color temperature
+        case CMD_TEMP_P: // Decrease color temperature
             data->temperature = fuzzy_decrement(data->temperature, TEMPERATURE_STEP);
             break;
-        case CMD_6500K:  // Set color to coldest
-            data->temperature = FUZZY_MIN;
+        case CMD_6500K:  // Set color temperature to highest
+            data->temperature = FUZZY_MAX;
             break;
         case CMD_4000K:  // Set color half way between cold and warm 
             data->temperature = FUZZY_MAX * 0.5f;
             break;
-        case CMD_3000K:  // Set color to warmest
-            data->temperature = FUZZY_MAX;
+        case CMD_3000K:  // Set color temperature to lowest
+            data->temperature = FUZZY_MIN;
             break;
+        case CMD_TIMER:
+            data->brightness = FUZZY_MAX;
     }
 }
 
 
 DutyCycles LED_calculate_duty_cycles(const LEDData* data) {
 
-    float brightness = data->brightness;
+    float brightness = BRIGHTNESS_MIN;
 
     switch (data->state) {
         case IDLE:
             return (DutyCycles) { 0.0f, 0.0f };
 
         case POWER:
+            /* Set both LED strip channel brightness to maximum */
             return (DutyCycles) { DUTY_MAX, DUTY_MAX };
 
         case NIGHT:
-            brightness = BRIGHTNESS_MIN;
+            /* Set brightness to minimum and bypass brightness settings */
+            brightness = powf(BRIGHTNESS_MIN, BRIGHTNESS_EXPONENT);
+            break;
+
+        case OPERATION:
+            /* Apply exponential function for more natural dimming experience */
+            brightness = powf(data->brightness, BRIGHTNESS_EXPONENT);
+            break;
+
+        default:
+            return (DutyCycles) { 0.0f, 0.0f };
     }
 
-    /* Apply exponential function for more natural dimming experience */
-    brightness = powf(data->brightness, BRIGHTNESS_EXPONENT);
+    const float duty_white = DUTY_MAX * brightness * data->temperature;
+    const float duty_yellow = DUTY_MAX * brightness * (1.0f - data->temperature);
 
-    const float duty_cool = DUTY_MAX * brightness * data->temperature;
-    const float duty_warm = DUTY_MAX * brightness * (1.0f - data->temperature);
+    return (DutyCycles) { duty_white, duty_yellow };
 
-    return (DutyCycles) { duty_cool, duty_warm };
 }

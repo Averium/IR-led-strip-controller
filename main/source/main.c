@@ -19,9 +19,9 @@
 #include "LED_control.h"
 
 
-#define LED_TIMER            LEDC_TIMER_0
-#define LED_CHANNEL_COOL     LEDC_CHANNEL_0    
-#define LED_CHANNEL_WARM     LEDC_CHANNEL_1
+#define LED_TIMER          LEDC_TIMER_0
+#define LED_CHANNEL_WHITE  LEDC_CHANNEL_0    
+#define LED_CHANNEL_YELLOW LEDC_CHANNEL_1
 
 
 static const char *TAG = "IR LED driver";
@@ -41,12 +41,14 @@ rmt_rx_event_callbacks_t rx_event_callbacks;
 rmt_receive_config_t rx_config;
 QueueHandle_t rx_queue_handle;
 
+LEDData led_data = {
+    .brightness = BRIGHTNESS_MIN,
+    .temperature = FUZZY_MAX * 0.5f,
+    .state = IDLE,
+};
 
-typedef struct {
-    RateLimitedFloat* duty_cool;
-    RateLimitedFloat* duty_warm;
-    LEDData* state;
-} SharedData;
+RateLimitedFloat duty_white  = (RateLimitedFloat) { PWM_RAMP_TIME, 0.0f, 0.0f, 0.0f, 1u };
+RateLimitedFloat duty_yellow = (RateLimitedFloat) { PWM_RAMP_TIME, 0.0f, 0.0f, 0.0f, 1u };
 
 
 static bool rx_done_callback(
@@ -62,15 +64,9 @@ static bool rx_done_callback(
 }
 
 
-void IR_receiver_task(void* shared) {
+void IR_receiver_task(void* pv_params) {
 
-    SharedData* shared_data = ((SharedData*)(shared));
-
-    RateLimitedFloat* duty_cool = shared_data->duty_cool;
-    RateLimitedFloat* duty_warm = shared_data->duty_warm;
-    LEDData* state = shared_data->state;
-
-    uint32_t command_memory;
+    uint32_t command_memory = 0;
     rmt_rx_done_event_data_t rx_data;
     rmt_symbol_word_t raw_symbols[RMT_SYMBOL_BUFFER_SIZE];
     
@@ -88,38 +84,40 @@ void IR_receiver_task(void* shared) {
                 if (command == CMD_REPEAT) { command = command_memory; }
                 else                       { command_memory = command; }
 
-                LED_state_transition(command, state);
-                LED_state_operation(command, state);
+                LED_state_transition(command, &led_data);
+                LED_state_operation(command, &led_data);
 
-                const DutyCycles control = LED_calculate_duty_cycles(state);
+                const DutyCycles control = LED_calculate_duty_cycles(&led_data);
 
-                RLF_set_target(duty_cool, control.cool);
-                RLF_set_target(duty_warm, control.warm);                
-
+                RLF_set_target(&duty_white, control.white);
+                RLF_set_target(&duty_yellow, control.yellow);                
+                
+                // ESP_LOGI(TAG, "white: %.3f - yellow: %.3f - state: %d", duty_white->target, duty_yellow->target, led_data->state);
             }
         }
     }
 }
 
 
-void LED_control_task(void* shared) {
-
-    RateLimitedFloat *duty_cool = ((SharedData*)shared)->duty_cool;
-    RateLimitedFloat *duty_warm = ((SharedData*)shared)->duty_warm;
+void LED_control_task(void* pv_params) {
 
     const TickType_t period = pdMS_TO_TICKS(CONTROL_REFRESH_PERIOD_MS);
+    const float dt = CONTROL_REFRESH_PERIOD_MS * MS_TO_S;
 
     TickType_t last_wake = xTaskGetTickCount();
 
     loop {
-        vTaskDelayUntil(&last_wake, period);
-        float dt = ((float)(period)) * MS_TO_S;
+        xTaskDelayUntil(&last_wake, period);
 
-        RLF_update(duty_cool, dt);
-        RLF_update(duty_warm, dt);
+        if (RLF_update(&duty_white, dt)) {
+            LED_set_duty_cycle(LED_CHANNEL_WHITE, duty_white.value);
+        };
 
-        LED_set_duty_cycle(LED_CHANNEL_COOL, duty_cool->value);
-        LED_set_duty_cycle(LED_CHANNEL_WARM, duty_warm->value);
+        if (RLF_update(&duty_yellow, dt)) {
+            LED_set_duty_cycle(LED_CHANNEL_YELLOW, duty_yellow.value);
+        };
+
+        // ESP_LOGI(TAG, "white: %.3f - yellow: %.3f", duty_white.value, duty_yellow.value);
     }
 }
 
@@ -128,12 +126,12 @@ void app_main(void)
 {
     // Set log level
     esp_log_level_set("*", ESP_LOG_ERROR);
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, LOG_LEVEL);
 
     // LED driver config
     common_timer = LED_timer_config(LED_TIMER, LED_TIMER_RESOLUTION, LED_FREQUENCY);
-    channel_cool = LED_channel_config(CONTROL_PIN_COOL, LED_CHANNEL_COOL, &common_timer);
-    channel_warm = LED_channel_config(CONTROL_PIN_WARM, LED_CHANNEL_WARM, &common_timer);
+    channel_cool = LED_channel_config(CONTROL_PIN_WHITE, LED_CHANNEL_WHITE, &common_timer);
+    channel_warm = LED_channel_config(CONTROL_PIN_YELLOW, LED_CHANNEL_YELLOW, &common_timer);
 
     /* IR COMMUNICATION CONFIG */
     rx_channel_config = RMT_rx_channel_config(RMT_RX_GPIO, RMT_RESOLUTION_HZ);
@@ -152,24 +150,9 @@ void app_main(void)
     ESP_ERROR_CHECK(rmt_enable(rx_channel_handle));
     ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_channel_handle, &rx_event_callbacks, rx_queue_handle));
     
-    LED_set_duty_cycle(LED_CHANNEL_COOL, 0);
-    LED_set_duty_cycle(LED_CHANNEL_WARM, 0);
+    LED_set_duty_cycle(LED_CHANNEL_WHITE, 0);
+    LED_set_duty_cycle(LED_CHANNEL_YELLOW, 0);
 
-    LEDData state = {
-        .enabled = false,
-        .brightness = BRIGHTNESS_MIN,
-        .temperature = FUZZY_MAX * 0.5f,
-    };
-    
-    RateLimitedFloat duty_cool = RLF_init(0.0f, 2.0f);
-    RateLimitedFloat duty_warm = RLF_init(0.0f, 2.0f);
-
-    SharedData shared = {
-        .duty_cool = &duty_cool,
-        .duty_warm = &duty_warm,
-        .state = &state,
-    };
-
-    xTaskCreate(LED_control_task, "LED_control_task", LED_TASK_STACK_DEPTH, &shared, 5, NULL); 
-    xTaskCreate(IR_receiver_task, "IR_receiver_task", IR_TASK_STACK_DEPTH, &shared, 5, NULL);
+    xTaskCreate(LED_control_task, "LED_control_task", LED_TASK_STACK_DEPTH, (void*)NULL, 5, NULL); 
+    xTaskCreate(IR_receiver_task, "IR_receiver_task", IR_TASK_STACK_DEPTH, (void*)NULL, 5, NULL);
 }

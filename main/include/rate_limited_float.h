@@ -2,15 +2,22 @@
 #define RATE_LIMITED_FLOAT_H
 
 
+#include <math.h>
+
+
+#define FLOAT_EPS 1e-6f
+
+
 typedef struct {
+    float ramp_time;
     float value;
     float target;
-    float rate;
+    float step;
+    unsigned int target_changed_flag;
 } RateLimitedFloat;
 
 
-RateLimitedFloat RLF_init(const float initial_value, const float rate);
-int RLF_update(RateLimitedFloat* object, const float dt);
+unsigned int RLF_update(RateLimitedFloat* object, const float dt);
 void RLF_set_target(RateLimitedFloat* object, const float new_target);
 
 

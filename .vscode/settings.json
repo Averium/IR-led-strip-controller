@@ -7,9 +7,15 @@
   ],
   "idf.toolsPathWin": "d:\\Programming\\Embedded\\ESP32\\Tools",
   "idf.customExtraVars": {
+    "OPENOCD_SCRIPTS": "d:\\Programming\\Embedded\\ESP32\\Tools\\tools\\openocd-esp32\\v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+    "IDF_CCACHE_ENABLE": "1",
+    "ESP_ROM_ELF_DIR": "d:\\Programming\\Embedded\\ESP32\\Tools\\tools\\esp-rom-elfs\\20240305/",
     "IDF_TARGET": "esp32c3"
   },
   "files.associations": {
-    "nec_decoder.h": "c"
-  }
+    "nec_decoder.h": "c",
+    "rate_limited_float.h": "c"
+  },
+  "idf.flashType": "UART",
+  "idf.portWin": "COM8"
 }
